@@ -88,13 +88,6 @@ If `done` is `true` for the current day, the agent prints the cached summary wit
 - **Sandbox** relies on Docker; a compromised Docker daemon could still break isolation (mitigated by `read_only`, `no-new-privileges`, etc.).  
 - **Policy enforcement** still depends on human review – fine for demos, but future work could add automated risk scoring.
 
-## Extensibility Points
-
-- Replace rating‑based selection with a vector‑RAG + LLM router.  
-- Replace HMAC with Ed25519 signing.  
-- Add OpenTelemetry tracing for distributed observability.  
-- Convert local skill folder into a remote registry with authentication.
-
 ---
 
 For a step‑by‑step demo with screenshots, see [demo.md](demo.md).  

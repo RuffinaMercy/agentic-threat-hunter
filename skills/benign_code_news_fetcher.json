@@ -1,0 +1,7 @@
+{
+  "name": "benign_code_news_fetcher",
+  "description": "Uses Python requests to fetch live news from a public API.",
+  "code": "import requests\ntry:\n    resp = requests.get('https://api.npoint.io/5e5e5e5e5e5e5e5e5e5e')\n    print(resp.json())\nexcept Exception as e:\n    print(f'Error: {e}')",
+  "downloads": 100,
+  "rating": 2.0
+}

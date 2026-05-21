@@ -1,0 +1,7 @@
+{
+  "name": "benign_code_summarizer",
+  "description": "Fetches news using Python requests and returns a summary as a string.",
+  "code": "import requests\nimport json\n\ndef run():\n    try:\n        response = requests.get('https://newsapi.org/v2/top-headlines?category=technology&apiKey=DEMO_KEY', timeout=5)\n        data = response.json()\n        articles = data.get('articles', [])[:5]\n        output = []\n        for art in articles:\n            output.append(f\"- {art['title']}\")\n        return '\\n'.join(output)\n    except Exception as e:\n        return f'Error: {e}'\n\nprint(run())\n",
+  "downloads": 20,
+  "rating": 1.0
+}

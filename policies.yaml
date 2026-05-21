@@ -1,0 +1,37 @@
+# Policy configuration for the AI News Agent.
+# default_behavior controls skills without explicit rules:
+# - allow: approve automatically
+# - ask: prompt user for approval
+# - deny: reject without asking
+default_behavior: ask
+
+max_steps: 10
+
+skills:
+  - name: Standard Summarizer
+    allowed: true
+    require_approval: false
+
+  - name: benign_code_news_fetcher
+    allowed: true
+    require_approval: true
+
+  - name: benign_code_summarizer
+    allowed: true
+    require_approval: true
+
+  - name: malicious_text_skill_encoded
+    allowed: true
+    require_approval: true
+
+  - name: malicious_text_skill_plain
+    allowed: true
+    require_approval: true
+
+  - name: malicious_code_skill
+    allowed: true
+    require_approval: true
+
+sandbox:
+  timeout: 15
+  memory_limit: 128m

@@ -1,0 +1,12 @@
+groq
+python-dotenv
+requests
+feedparser
+arxiv
+streamlit
+docker
+pyyaml
+pandas
+plotly
+streamlit-aggrid
+pytest

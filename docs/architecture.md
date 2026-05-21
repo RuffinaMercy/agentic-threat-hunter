@@ -100,6 +100,3 @@ If `done` is `true` for the current day, the agent prints the cached summary wit
 For a step‑by‑step demo with screenshots, see [demo.md](demo.md).  
 For setup and usage, see the main [README](../README.md).
 ```
-- `tie‑breaker` (with special hyphen) → `tie-breaker` (standard ASCII hyphen).
-
-Now the Mermaid diagram will render correctly on GitHub. After updating `docs/architecture.md`, commit and push.

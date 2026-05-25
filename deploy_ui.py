@@ -58,7 +58,6 @@ def render_news_with_stars(state, starred_items):
             title = item.get("title") or "Untitled"
             source = item.get("source") or "Unknown source"
             url = item.get("url")
-            # Use LLM‑generated summary if available, else fallback
             short_summary = item_summaries.get(title, "")
             if not short_summary:
                 summary = item.get("summary") or ""
@@ -97,11 +96,29 @@ def render_news_with_stars(state, starred_items):
     else:
         st.info("No news items fetched yet. Run the agent to fetch today’s news.")
 
+# ------------------------------------------------------------------
+# Main UI
+# ------------------------------------------------------------------
 st.set_page_config(page_title="AI News Agent", layout="wide", page_icon="🤖")
 st.title("🤖 AI News Agent")
 st.caption(f"Today’s date: **{format_date(date.today())}** · Secure mode (signed skills only)")
 
+# Sidebar
 with st.sidebar:
+    st.markdown("### ℹ️ About")
+    st.markdown(
+        """
+        **👩‍💻 Developed by:** [Ruffina Mercy](https://www.linkedin.com/in/mercy2209/)
+        
+        **🔗 Full research version (attacks, signing, sandbox):**  
+        [GitHub Repository](https://github.com/RuffinaMercy/agentic-threat-hunter)
+        
+        This live demo runs **secure mode only** (signed text skills).  
+        The complete project includes supply‑chain attack simulation, HMAC signing, policy‑as‑code, Docker sandboxing, and full observability.
+        """
+    )
+
+    st.divider()
     st.header("⭐ Bookmarked News")
     starred = load_starred()
     if starred:
@@ -118,12 +135,16 @@ with st.sidebar:
     else:
         st.info("☆ Click the star icon on any news to bookmark it here.")
 
+    st.divider()
+
+# Main area: load existing briefing if any
 current_state = read_state()
 if current_state and current_state.get("done") and current_state.get("date") == date.today().isoformat():
     render_news_with_stars(current_state, load_starred())
 else:
     st.info("No briefing for today. Click 'Run Agent' to generate one.")
 
+# Run button
 col1, col2, col3 = st.columns([1, 2, 1])
 with col2:
     run_btn = st.button("▶ Run Agent (Secure Mode)", type="primary", use_container_width=True)
@@ -134,6 +155,7 @@ if run_btn:
         env = os.environ.copy()
         env["PYTHONUNBUFFERED"] = "1"
         env["AGENT_APPROVE_SKILL"] = "yes"
+
         try:
             result = subprocess.run(cmd, cwd=str(BASE_DIR), env=env, capture_output=True, text=True, timeout=180)
             logs = (result.stdout or "") + (result.stderr or "")

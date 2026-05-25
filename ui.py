@@ -441,8 +441,9 @@ def render_sidebar():
     st.sidebar.markdown("### 📊 Agent Status")
     
     # Display date and status in a card-like format
+    display_date = state.get("date", date.today().isoformat())
     st.sidebar.markdown(f"""
-    **Date:** `{state.get("date", "—")}`  
+    **Date:** `{display_date}`  
     **Status:** {"✅ Done" if state.get("done") else "⏳ Running"}
     """)
     

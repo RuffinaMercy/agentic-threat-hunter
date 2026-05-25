@@ -3,7 +3,7 @@ python-dotenv
 requests
 feedparser
 arxiv
-streamlit
+streamlit>=1.42.0
 docker
 pyyaml
 pandas

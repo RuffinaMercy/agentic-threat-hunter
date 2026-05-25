@@ -1,5 +1,4 @@
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/)
-[![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
 # Agentic AI Skill Marketplace Security Demo
 
@@ -164,11 +163,6 @@ test_agent.py::test_policy_allows_with_approval PASSED
 - **Human approval burden** – automated risk scoring is future work.
 - **Intentional unsafe selection** – popularity‑based selection is deliberately naive for demo purposes.
 - **Local prototype** – not a multi‑tenant marketplace; no authentication or network hardening.
-
-## 📄 License
-
-MIT – see [LICENSE](LICENSE) file.
-
 
 ## 📚 Additional Documentation
 

@@ -1,4 +1,5 @@
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/)
+[![Live Demo](https://img.shields.io/badge/Live_Demo-Streamlit-FF4B4B?style=for-the-badge&logo=Streamlit&logoColor=white)](https://ruffina-ai-news-agent.streamlit.app/)
 
 # Agentic AI Skill Marketplace Security Demo
 
@@ -9,6 +10,14 @@
 The agent fetches daily AI news, loads JSON skills from `skills/`, selects a skill by rating/downloads, checks policy and user approval, then executes either a Groq text skill or a Docker‑sandboxed code skill.
 
 ## Quick Start
+
+### 🔗 Live Demo (No Installation Required)
+
+Click the badge above or visit [https://ruffina-ai-news-agent.streamlit.app/](https://ruffina-ai-news-agent.streamlit.app/) to see the secure agent in action – live news, bookmarks, and fully automated summaries.
+
+For the full security research version (including supply‑chain attack simulations, cryptographic signing, policy engine, and Docker sandbox), clone the repository and run it locally as described below.
+
+### Local Setup
 
 ```bash
 # Clone the repository
@@ -77,11 +86,11 @@ Code skills execute inside a Docker sandbox for isolation.
 
 ## Running the Agent
 
-| Command | Description |
-|---------|-------------|
-| `python agent.py` | Normal secure mode – only signed skills load. |
-| `python agent.py --skip-verification` | Attack demo – loads all skills (unsigned allowed). |
-| `rm agent_state.json` (or `Remove-Item`) | Reset state before a fresh run. |
+| Command                                  | Description                                        |
+|------------------------------------------|----------------------------------------------------|
+| `python agent.py`                        | Normal secure mode – only signed skills load.      |
+| `python agent.py --skip-verification`    | Attack demo – loads all skills (unsigned allowed). |
+| `rm agent_state.json` (or `Remove-Item`) | Reset state before a fresh run.                    |
 
 The agent is **resumable** – it saves progress to `agent_state.json`. If today’s run is already marked `done`, it prints the cached summary.
 
@@ -147,14 +156,14 @@ test_agent.py::test_policy_allows_with_approval PASSED
 
 ## Threat Model & Mitigations
 
-| Attack | Mitigation |
-|--------|-------------|
-| Malicious skill injection | HMAC signatures reject unsigned/modified skills |
-| Prompt injection (base64 encoded) | Decode before display/execution |
-| Arbitrary code execution | Docker sandbox (no network, read‑only FS, non‑root user) |
-| Unauthorised skill execution | Policy‑as‑code (`allowed` / `require_approval`) |
-| Human‑in‑the‑loop bypass | Permission gate (explicit `yes` required) |
-| Lack of auditability | JSONL logs + SQLite metrics + Streamlit dashboard |
+| Attack                            | Mitigation |
+|--------                           |-------------|
+| Malicious skill injection         | HMAC signatures reject unsigned/modified skills          |
+| Prompt injection (base64 encoded) | Decode before display/execution                          |
+| Arbitrary code execution          | Docker sandbox (no network, read‑only FS, non‑root user) |
+| Unauthorised skill execution      | Policy‑as‑code (`allowed` / `require_approval`)          |
+| Human‑in‑the‑loop bypass          | Permission gate (explicit `yes` required)                |
+| Lack of auditability              | JSONL logs + SQLite metrics + Streamlit dashboard        |
 
 ## ⚠️ Known Limitations
 

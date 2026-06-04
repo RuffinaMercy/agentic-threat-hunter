@@ -7,10 +7,11 @@ from pathlib import Path
 
 import streamlit as st
 
-BASE_DIR = Path(__file__).resolve().parent
-STATE_FILE = BASE_DIR / "agent_state.json"
-AGENT_FILE = BASE_DIR / "agent.py"
-STARRED_FILE = BASE_DIR / "starred_news.json"
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+STATE_FILE = PROJECT_ROOT / "data" / "agent_state.json"
+AGENT_DIR = PROJECT_ROOT / "agent"
+AGENT_FILE = AGENT_DIR / "agent.py"
+STARRED_FILE = PROJECT_ROOT / "data" / "starred_news.json"
 
 def read_state():
     if not STATE_FILE.exists():
@@ -21,6 +22,7 @@ def read_state():
         return {}
 
 def save_state(state):
+    STATE_FILE.parent.mkdir(parents=True, exist_ok=True)
     STATE_FILE.write_text(json.dumps(state, indent=2, ensure_ascii=False), encoding="utf-8")
 
 def format_date(d: date):
@@ -36,6 +38,7 @@ def load_starred():
         return []
 
 def save_starred(starred_list):
+    STARRED_FILE.parent.mkdir(parents=True, exist_ok=True)
     STARRED_FILE.write_text(json.dumps(starred_list, indent=2, ensure_ascii=False), encoding="utf-8")
 
 def truncate(text, max_len=200):
@@ -45,10 +48,10 @@ def truncate(text, max_len=200):
 
 def render_news_with_stars(state, starred_items):
     if state.get("final_summary"):
-        st.subheader("📰 Today’s Summary")
+        st.subheader("📰 Today's Summary")
         st.markdown(state["final_summary"])
     else:
-        st.info("No summary yet. Click 'Run Agent' to generate today’s briefing.")
+        st.info("No summary yet. Click 'Run Agent' to generate today's briefing.")
 
     raw_news = state.get("raw_news") or []
     item_summaries = state.get("item_summaries", {})
@@ -94,14 +97,14 @@ def render_news_with_stars(state, starred_items):
                         st.rerun()
                 st.divider()
     else:
-        st.info("No news items fetched yet. Run the agent to fetch today’s news.")
+        st.info("No news items fetched yet. Run the agent to fetch today's news.")
 
 # ------------------------------------------------------------------
 # Main UI
 # ------------------------------------------------------------------
 st.set_page_config(page_title="AI News Agent", layout="wide", page_icon="🤖")
 st.title("🤖 AI News Agent")
-st.caption(f"Today’s date: **{format_date(date.today())}** · Secure mode (signed skills only)")
+st.caption(f"Today's date: **{format_date(date.today())}** · Secure mode (signed skills only)")
 
 # Sidebar
 with st.sidebar:
@@ -157,7 +160,7 @@ if run_btn:
         env["AGENT_APPROVE_SKILL"] = "yes"
 
         try:
-            result = subprocess.run(cmd, cwd=str(BASE_DIR), env=env, capture_output=True, text=True, timeout=180)
+            result = subprocess.run(cmd, cwd=str(PROJECT_ROOT), env=env, capture_output=True, text=True, timeout=180)
             logs = (result.stdout or "") + (result.stderr or "")
             with st.expander("Agent logs (click to expand)"):
                 st.code(logs or "Agent finished without output.", language="text")

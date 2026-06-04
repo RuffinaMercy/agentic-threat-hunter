@@ -8,7 +8,9 @@ from pathlib import Path
 from typing import Any, Dict, Optional
 
 
-LOG_DIR = Path("logs")
+# Paths relative to project root (two levels up from agent/)
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+LOG_DIR = PROJECT_ROOT / "logs"
 LOG_FILE = LOG_DIR / "agent_logs.jsonl"
 METRICS_DB = LOG_DIR / "metrics.db"
 
@@ -28,7 +30,7 @@ def utc_now() -> str:
 
 
 def ensure_storage() -> None:
-    LOG_DIR.mkdir(exist_ok=True)
+    LOG_DIR.mkdir(exist_ok=True, parents=True)
     with sqlite3.connect(METRICS_DB) as conn:
         conn.execute(
             """

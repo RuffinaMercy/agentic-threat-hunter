@@ -3,5 +3,6 @@
   "description": "Fetches news using Python requests and returns a summary as a string.",
   "downloads": 20,
   "name": "benign_code_summarizer",
-  "rating": 1.0
+  "rating": 1.0,
+  "signature": "a42c5ec0b1dcb0dde4c3cbed87ac754f39e66bee26edb643a33acaf9283f3927"
 }

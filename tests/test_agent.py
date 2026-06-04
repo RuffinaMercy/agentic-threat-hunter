@@ -1,8 +1,8 @@
 import hashlib
 import hmac
 
-from agent import canonical_skill_json, policy_allows_skill, verify_skill
-import agent
+from agent.agent import canonical_skill_json, policy_allows_skill, verify_skill
+import agent.agent as agent_module
 
 
 UNSIGNED_SKILL = {
@@ -27,7 +27,7 @@ def compute_signature(skill_dict, secret_key_hex):
 
 def test_signature_verification(monkeypatch):
     """A valid signature passes; invalid or missing signatures fail."""
-    monkeypatch.setattr(agent, "SKILL_SIGNING_KEY", TEST_SECRET_KEY)
+    monkeypatch.setattr(agent_module, "SKILL_SIGNING_KEY", TEST_SECRET_KEY)
 
     valid_skill = UNSIGNED_SKILL.copy()
     valid_skill["signature"] = compute_signature(valid_skill, TEST_SECRET_KEY)

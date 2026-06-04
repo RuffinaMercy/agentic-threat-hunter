@@ -7,6 +7,9 @@ import os
 import re
 import time
 import concurrent.futures
+import tempfile
+import subprocess
+import shutil
 from datetime import date
 from pathlib import Path
 from typing import Any, Dict, List, Optional
@@ -15,6 +18,7 @@ import arxiv
 import feedparser
 import requests
 import yaml
+import keyring
 from dotenv import load_dotenv
 from groq import Groq
 
@@ -22,9 +26,11 @@ from logger import log_event, record_step, record_error, record_llm_tokens, reco
 
 load_dotenv()
 
-STATE_FILE = Path("agent_state.json")
-SKILLS_DIR = Path("skills")
-POLICIES_FILE = Path("policies.yaml")
+# Paths relative to project root (one level up from agent/)
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+STATE_FILE = PROJECT_ROOT / "data" / "agent_state.json"
+SKILLS_DIR = PROJECT_ROOT / "skills"
+POLICIES_FILE = Path(__file__).resolve().parent / "policies.yaml"
 TASK_DESCRIPTION = "Summarize today's top AI news in 3 bullet points, neutral tone, include sources"
 
 REDDIT_URL = "https://www.reddit.com/r/MachineLearning/top.json"
@@ -37,11 +43,85 @@ HACKER_NEWS_ITEM_URL = "https://hacker-news.firebaseio.com/v0/item/{}.json"
 
 GROQ_SKILL_SELECTOR_MODEL = os.getenv("GROQ_SKILL_SELECTOR_MODEL", "llama-3.1-8b-instant")
 GROQ_SUMMARIZER_MODEL = os.getenv("GROQ_SUMMARIZER_MODEL", "llama-3.3-70b-versatile")
-SKILL_SIGNING_KEY = os.getenv("SKILL_SIGNING_KEY", "")
+# SKILL_SIGNING_KEY moved to keyring (see signing_key_bytes() function below)
 
 POLICIES: Dict[str, Any] = {}
 _item_summaries: Dict[str, str] = {}   # store per‑item short summaries from last LLM call
 
+# ------------------------------------------------------------------
+# Cisco Skill Scanner integration (pre‑execution security check)
+# ------------------------------------------------------------------
+def scan_skill_with_cisco(skill: Dict[str, Any]) -> tuple[bool, str]:
+    """
+    Converts a skill JSON to a temporary skill directory, runs Cisco Skill Scanner,
+    and returns (is_safe, message).
+    Rejects if any CRITICAL or HIGH severity findings are found (count > 0).
+    """
+    if shutil.which("skill-scanner") is None:
+        log("Warning: skill-scanner not found in PATH. Skipping pre‑execution scan.")
+        return True, "scanner not available"
+
+    temp_dir = tempfile.mkdtemp(prefix="skill_scan_")
+    try:
+        skill_name = skill.get("name", "unnamed")
+        description = skill.get("description", "")
+        yaml_frontmatter = f"""---
+name: {skill_name}
+description: {description}
+---
+"""
+        if "instructions" in skill:
+            instr = skill["instructions"]
+            if isinstance(instr, str) and len(instr) % 4 == 0:
+                try:
+                    decoded = base64.b64decode(instr).decode('utf-8')
+                    instr = decoded
+                except Exception:
+                    pass
+            body = instr
+        elif "code" in skill:
+            body = f"# Code skill\n\nThis skill executes the following Python code:\n```python\n{skill['code']}\n```"
+        else:
+            body = "No instructions or code provided."
+
+        skill_md_path = Path(temp_dir) / "SKILL.md"
+        skill_md_path.write_text(yaml_frontmatter + body, encoding="utf-8")
+
+        if "code" in skill:
+            script_path = Path(temp_dir) / "script.py"
+            script_path.write_text(skill["code"], encoding="utf-8")
+
+        cmd = ["skill-scanner", "scan", str(temp_dir)]
+        if os.getenv("SKILL_SCANNER_LLM_API_KEY"):
+            cmd.append("--use-behavioral")
+
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
+        output = result.stdout + result.stderr
+
+        # Parse severity counts
+        critical_match = re.search(r'CRITICAL:\s*(\d+)', output)
+        high_match = re.search(r'HIGH:\s*(\d+)', output)
+        critical_count = int(critical_match.group(1)) if critical_match else 0
+        high_count = int(high_match.group(1)) if high_match else 0
+
+        if critical_count > 0 or high_count > 0:
+            lines = [line.strip() for line in output.split('\n') if "CRITICAL" in line or "HIGH" in line]
+            summary = f"Scanner blocked skill: {', '.join(lines[:3])}"
+            return False, summary
+        else:
+            return True, "Scanner passed"
+    except subprocess.TimeoutExpired:
+        log("Scanner timed out – allowing skill (fail open).")
+        return True, "scanner timeout"
+    except Exception as e:
+        log(f"Scanner error: {e} – allowing skill (fail open).")
+        return True, f"scanner error: {e}"
+    finally:
+        shutil.rmtree(temp_dir, ignore_errors=True)
+
+# ------------------------------------------------------------------
+# Existing helper functions
+# ------------------------------------------------------------------
 def load_policies(policy_file: Path) -> Dict[str, Any]:
     if not policy_file.exists():
         log("Warning: policies.yaml not found. Using permissive defaults.")
@@ -139,6 +219,7 @@ def load_state() -> Dict[str, Any]:
     return state
 
 def save_state(state: Dict[str, Any]) -> None:
+    STATE_FILE.parent.mkdir(parents=True, exist_ok=True)
     STATE_FILE.write_text(json.dumps(state, indent=2, ensure_ascii=False), encoding="utf-8")
 
 def fetch_reddit(limit: int = 5) -> List[Dict[str, str]]:
@@ -283,10 +364,11 @@ def canonical_skill_json(skill: Dict[str, Any]) -> str:
     return json.dumps(skill, sort_keys=True, separators=(',', ':'), ensure_ascii=False)
 
 def signing_key_bytes() -> bytes:
-    if not SKILL_SIGNING_KEY:
-        raise RuntimeError("SKILL_SIGNING_KEY missing.")
+    hex_key = keyring.get_password("skill_marketplace", "SKILL_SIGNING_KEY")
+    if not hex_key:
+        raise RuntimeError("SKILL_SIGNING_KEY not found in Windows Credential Manager. Run agent/store_key.py first.")
     try:
-        return bytes.fromhex(SKILL_SIGNING_KEY)
+        return bytes.fromhex(hex_key)
     except ValueError as exc:
         raise RuntimeError("SKILL_SIGNING_KEY must be hex-encoded.") from exc
 
@@ -319,11 +401,22 @@ def load_skills(skip_verification: bool = False) -> List[Dict[str, Any]]:
         if "instructions" not in skill and "code" not in skill:
             log(f"Skipping {path.name}; missing instructions or code")
             continue
+
+        # Pre‑execution scanning (only if not skipping verification)
+        if not skip_verification:
+            is_safe, msg = scan_skill_with_cisco(skill)
+            if not is_safe:
+                log(f"Skill {path.name} BLOCKED by security scanner: {msg}")
+                continue
+
+        # HMAC verification
         if not skip_verification and not verify_skill(skill):
             log(f"Integrity check failed – skill rejected: {path.name}")
             continue
+
         skill["_path"] = str(path)
         skills.append(skill)
+
     if not skills:
         log("No valid signed skills found. Sign skills or use --skip-verification.")
         raise SystemExit(0)
@@ -383,7 +476,7 @@ def permission_gate(skill, policies: Dict[str, Any]):
 def run_code_skill_in_sandbox(code: str) -> str:
     import subprocess
     try:
-        result = subprocess.run(["python", "sandbox_docker.py", code], capture_output=True, text=True, timeout=15)
+        result = subprocess.run(["python", str(Path(__file__).resolve().parent / "sandbox_docker.py"), code], capture_output=True, text=True, timeout=15)
         stdout = result.stdout.strip()
         stderr = result.stderr.strip()
         if result.returncode != 0:
@@ -499,33 +592,22 @@ def main() -> int:
             state["final_summary"] = execute_skill(client, chosen_skill, state["raw_news"])
             if _item_summaries:
                 state["item_summaries"] = _item_summaries
-            else:
-                state["item_summaries"] = {}
             state["done"] = True
-            state["step"] = 3
             save_state(state)
             record_step()
             log_event("step_end", step=2, name="permission_and_execute", duration_seconds=time.time() - start_time)
-            log("Step 2 complete. Summary saved.")
-        log("Step 3/3: Done.")
-        print("\n" + (state.get("final_summary") or ""), flush=True)
-        return 0
-    except Exception as exc:
-        log(f"Error: {exc}")
-        log_exception(exc)
-        return 1
-    finally:
+            log("Step 2 complete. State saved.")
         finalize_run()
+        print("\n" + state["final_summary"], flush=True)
+        return 0
+    except SystemExit as e:
+        finalize_run()
+        return e.code or 1
+    except Exception as e:
+        log(f"Fatal error: {e}")
+        log_exception(e)
+        finalize_run()
+        return 1
 
 if __name__ == "__main__":
-    try:
-        raise SystemExit(main())
-    except KeyboardInterrupt:
-        log("Interrupted. Run again to resume.")
-        finalize_run()
-        raise SystemExit(130)
-    except Exception as exc:
-        log(f"Unhandled error: {exc}")
-        log_exception(exc)
-        finalize_run()
-        raise SystemExit(1)
+    raise SystemExit(main())

@@ -24,12 +24,14 @@ import yaml
 # Configuration
 # ============================================================================
 
-BASE_DIR = Path(__file__).resolve().parent
-STATE_FILE = BASE_DIR / "agent_state.json"
-SKILLS_DIR = BASE_DIR / "skills"
-AGENT_FILE = BASE_DIR / "agent.py"
-POLICIES_FILE = BASE_DIR / "policies.yaml"
-LOGS_DIR = BASE_DIR / "logs"
+# Paths relative to project root
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+AGENT_DIR = PROJECT_ROOT / "agent"
+STATE_FILE = PROJECT_ROOT / "data" / "agent_state.json"
+SKILLS_DIR = PROJECT_ROOT / "skills"
+AGENT_FILE = AGENT_DIR / "agent.py"
+POLICIES_FILE = AGENT_DIR / "policies.yaml"
+LOGS_DIR = PROJECT_ROOT / "logs"
 LOGS_JSONL_FILE = LOGS_DIR / "agent_logs.jsonl"
 METRICS_DB_FILE = LOGS_DIR / "metrics.db"
 
@@ -179,11 +181,11 @@ def render_run_tab():
         env["AGENT_APPROVE_SKILL"] = "yes"  # Auto-approve in UI mode
         env["PYTHONUNBUFFERED"] = "1"
         
-        # Run agent as subprocess
+        # Run agent as subprocess from project root
         with st.spinner("⏳ Agent is running..."):
             process = subprocess.Popen(
                 cmd,
-                cwd=str(BASE_DIR),
+                cwd=str(PROJECT_ROOT),
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,
                 text=True,
@@ -377,7 +379,7 @@ def render_logs_tab():
                     title="Token Usage Trend",
                     markers=True
                 )
-                st.plotly_chart(fig, use_container_width=True)  # Plotly retains this param
+                st.plotly_chart(fig, use_container_width=True)
 
 
 def render_policy_tab():

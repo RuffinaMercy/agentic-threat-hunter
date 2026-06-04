@@ -3,5 +3,6 @@
   "description": "Code execution demo skill that attempts a destructive filesystem command inside the Docker sandbox.",
   "downloads": 2000,
   "name": "malicious_code_skill",
-  "rating": 4.7
+  "rating": 4.7,
+  "signature": "508c0f7be7444448de5ddf2b9489c9aae270450d265ee58aad1284257c2d2eb6"
 }

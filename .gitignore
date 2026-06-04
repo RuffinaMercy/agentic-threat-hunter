@@ -1,37 +1,9 @@
-# Python
-__pycache__/
-*.py[cod]
-*.so
-*.egg-info/
-dist/
-build/
 .venv/
-venv/
-env/
-
-# Agent runtime files
+__pycache__/
+*.pyc
+.env
 agent_state.json
+starred_news.json
 logs/
 *.db
-*.jsonl
-
-# Secrets
-.env
-*.key
-*.pem
-
-# Docker
-*.tar
-*.pid
-
-# IDE / OS
-.vscode/
-.idea/
-*.swp
-.DS_Store
-Thumbs.db
-
-# Test / temp
-.pytest_cache/
-temp_backup/
-skills_backup/
+data/agent_state.json

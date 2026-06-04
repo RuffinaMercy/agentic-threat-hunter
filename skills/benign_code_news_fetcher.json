@@ -3,5 +3,6 @@
   "description": "Uses Python requests to fetch live news from a public API.",
   "downloads": 100,
   "name": "benign_code_news_fetcher",
-  "rating": 2.0
+  "rating": 2.0,
+  "signature": "ab4841a293ff447df116870406d4b690d1ac0e71d53a625d4aa91f4623fe00c4"
 }

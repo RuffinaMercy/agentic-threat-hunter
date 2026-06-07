@@ -18,7 +18,6 @@ import arxiv
 import feedparser
 import requests
 import yaml
-import keyring
 from dotenv import load_dotenv
 from groq import Groq
 
@@ -43,7 +42,7 @@ HACKER_NEWS_ITEM_URL = "https://hacker-news.firebaseio.com/v0/item/{}.json"
 
 GROQ_SKILL_SELECTOR_MODEL = os.getenv("GROQ_SKILL_SELECTOR_MODEL", "llama-3.1-8b-instant")
 GROQ_SUMMARIZER_MODEL = os.getenv("GROQ_SUMMARIZER_MODEL", "llama-3.3-70b-versatile")
-# SKILL_SIGNING_KEY moved to keyring (see signing_key_bytes() function below)
+# SKILL_SIGNING_KEY is now retrieved via signing_key_bytes() with fallbacks
 
 POLICIES: Dict[str, Any] = {}
 _item_summaries: Dict[str, str] = {}   # store per‑item short summaries from last LLM call
@@ -363,14 +362,49 @@ def fetch_news() -> List[Dict[str, str]]:
 def canonical_skill_json(skill: Dict[str, Any]) -> str:
     return json.dumps(skill, sort_keys=True, separators=(',', ':'), ensure_ascii=False)
 
+# ------------------------------------------------------------
+# Multi‑source signing key retrieval (works on Windows + Cloud)
+# ------------------------------------------------------------
 def signing_key_bytes() -> bytes:
-    hex_key = keyring.get_password("skill_marketplace", "SKILL_SIGNING_KEY")
-    if not hex_key:
-        raise RuntimeError("SKILL_SIGNING_KEY not found in Windows Credential Manager. Run agent/store_key.py first.")
+    """
+    Retrieve HMAC signing key from multiple sources:
+    1. Streamlit secrets (for cloud deployment)
+    2. Windows Credential Manager (local development)
+    3. Environment variable (fallback)
+    """
+    # 1. Try Streamlit secrets (cloud)
     try:
+        import streamlit as st
+        hex_key = st.secrets.get("SKILL_SIGNING_KEY")
+        if hex_key:
+            log("[key] Using SKILL_SIGNING_KEY from Streamlit secrets.")
+            return bytes.fromhex(hex_key)
+    except (ImportError, FileNotFoundError, AttributeError, KeyError):
+        pass  # Not in Streamlit or secret not set
+
+    # 2. Try Windows Credential Manager (local)
+    try:
+        import keyring
+        hex_key = keyring.get_password("skill_marketplace", "SKILL_SIGNING_KEY")
+        if hex_key:
+            log("[key] Using SKILL_SIGNING_KEY from Windows Credential Manager.")
+            return bytes.fromhex(hex_key)
+    except (ImportError, RuntimeError):
+        pass  # keyring not available or not on Windows
+
+    # 3. Fallback to environment variable (for testing)
+    hex_key = os.getenv("SKILL_SIGNING_KEY")
+    if hex_key:
+        log("[key] Using SKILL_SIGNING_KEY from environment variable (fallback).")
         return bytes.fromhex(hex_key)
-    except ValueError as exc:
-        raise RuntimeError("SKILL_SIGNING_KEY must be hex-encoded.") from exc
+
+    # If nothing works, raise clear error
+    raise RuntimeError(
+        "SKILL_SIGNING_KEY not found. "
+        "For Streamlit Cloud: add it to Secrets. "
+        "For local Windows: run agent/store_key.py. "
+        "For testing: set SKILL_SIGNING_KEY env var."
+    )
 
 def verify_skill(skill: Dict[str, Any]) -> bool:
     provided_signature = skill.get("signature")
@@ -424,9 +458,18 @@ def load_skills(skip_verification: bool = False) -> List[Dict[str, Any]]:
     return skills
 
 def get_groq_client() -> Groq:
-    if not os.getenv("GROQ_API_KEY"):
-        raise RuntimeError("GROQ_API_KEY missing.")
-    return Groq()
+    # For Streamlit Cloud, try secrets first; fallback to env
+    groq_key = None
+    try:
+        import streamlit as st
+        groq_key = st.secrets.get("GROQ_API_KEY")
+    except (ImportError, FileNotFoundError, AttributeError, KeyError):
+        pass
+    if not groq_key:
+        groq_key = os.getenv("GROQ_API_KEY")
+    if not groq_key:
+        raise RuntimeError("GROQ_API_KEY missing. Set it in Streamlit secrets or environment.")
+    return Groq(api_key=groq_key)
 
 def choose_skill(client, skills):
     best = max(skills, key=lambda s: (s.get("rating", 0), s.get("downloads", 0)))

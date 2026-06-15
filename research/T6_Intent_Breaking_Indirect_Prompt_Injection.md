@@ -173,4 +173,3 @@ We tested the mitigated agent with:
    - `agent/agent.py` (lines for input guard, quarantine, and prompt isolation)
 
 ---
-

@@ -1,8 +1,12 @@
 # Threat Modelling Process Using MAESTRO Framework
 
-**Researcher:** Ruffina Mercy  
-**Date:** 2026‑06‑04  
-**Diagrams:** `threat-modelling-diagram.png`, `attack-tree-tool-misuse.png`
+**Related Files:**  
+
+![Threat Modelling Diagram](../01-threat-modelling/threat-modelling-diagram.png)
+![Attack Tree](../01-threat-modelling/attack-tree-tool-misuse.png)
+
+- Attack simulation script: `../02-attack-simulation/simulate_key_compromise.py`
+- Keyring mitigation: `../03-mitigations/keyring-implementation.md`
 
 ---
 

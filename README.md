@@ -2,16 +2,16 @@
 [![Live Demo](https://img.shields.io/badge/Live_Demo-Streamlit-FF4B4B?style=for-the-badge&logo=Streamlit&logoColor=white)](https://ruffina-ai-news-agent.streamlit.app/)
 [![Security Research](https://img.shields.io/badge/Security-Research-red)](research/04-scanner-reports/supply-chain-attack-analysis.md)
 
-# Agentic AI Skill Marketplace – Security Research Edition
+# Agentic AI – Security Research Edition
 
-> **From threat model to mitigation: a fully documented supply‑chain attack simulation against an AI news agent, with layered defenses including HMAC signing, keyring, and Cisco Skill Scanner.**
+> **From threat model to mitigation: supply‑chain attacks, indirect prompt injection (T6), and layered defences for an AI news agent.**
 
-This repository started as a stateful AI news agent. It evolved into a **complete AI security research project** that:
+This repository started as a stateful AI news agent. It evolved into a **complete AI security research project** covering two critical OWASP threats:
 
-- Maps threats using the **MAESTRO 7‑layer framework**
-- Simulates an **HMAC key compromise** (stealing the signing key from `.env`)
-- Implements **two industry‑grade mitigations**: secrets management (`keyring`) and pre‑execution scanning (Cisco Skill Scanner)
-- Validates the mitigations against real malicious skills (prompt injection, command injection)
+- **LLM03:2025 – Supply Chain Vulnerabilities** (skill marketplace poisoning, HMAC key compromise)
+- **LLM01:2025 – Prompt Injection (T6: Intent Breaking & Goal Manipulation)**
+
+We simulate real attacks, then implement **defence in depth** using industry‑grade mitigations: HMAC signing, keyring, Cisco Skill Scanner, Llama 3.1 classification, quarantine, trust boundaries, and output validation.
 
 ---
 
@@ -19,31 +19,46 @@ This repository started as a stateful AI news agent. It evolved into a **complet
 
 [![Live Demo](https://img.shields.io/badge/Live_Demo-Streamlit-FF4B4B?style=for-the-badge&logo=Streamlit&logoColor=white)](https://ruffina-ai-news-agent.streamlit.app/)
 
-The live demo runs the **secure agent** without the attack simulation – it fetches daily AI news, selects the highest‑rated skill, and summarises the results.  
-*To see the full security research (threat model, key compromise, scanner integration), clone the repository and follow the instructions below.*
+The live demo runs the **secure agent** – it fetches daily AI news, selects the highest‑rated skill, and produces a summary.  
+*To see the full security research (attack simulations, T6 mitigations, scanner reports), clone the repository.*
 
 ---
 
-## 🧠 Research Summary
+## 🧠 Research Summary (Two Threat Streams)
+
+### 1. Supply‑Chain Attack (Skill Marketplace)
 
 | Phase | What was done | Key Output |
 |-------|---------------|-------------|
-| **Threat modelling** | Drew data flow diagram, built attack tree for “Tool Misuse”, mapped to MAESTRO layers | [Diagrams & process](research/01-threat-modelling/) |
-| **Attack simulation** | Stole HMAC key from `.env`, signed a malicious skill, agent executed it | [Simulation script](research/02-attack-simulation/simulate_key_compromise.py) |
-| **Mitigation #1** | Moved signing key from `.env` to Windows Credential Manager (`keyring`) | [Keyring implementation](research/03-mitigations/keyring-implementation.md) |
-| **Mitigation #2** | Integrated Cisco Skill Scanner to block CRITICAL/HIGH findings before HMAC | [Scanner integration](research/03-mitigations/cisco-scanner-integration.md) |
-| **Validation** | Ran scanner on `malicious_code_skill` (HIGH) and `malicious_text_skill` (CRITICAL) – both blocked | [Scanner reports](research/04-scanner-reports/) |
+| **Threat modelling** | MAESTRO framework, attack tree for “Tool Misuse” | [Diagrams](research/01-threat-modelling/) |
+| **Attack simulation** | Stole HMAC key from `.env`, signed a malicious skill | [Simulation script](research/02-attack-simulation/simulate_key_compromise.py) |
+| **Mitigation #1** | Moved signing key to Windows Credential Manager (`keyring`) | [Keyring implementation](research/03-mitigations/keyring-implementation.md) |
+| **Mitigation #2** | Integrated Cisco Skill Scanner (blocks CRITICAL/HIGH) | [Scanner reports](research/04-scanner-reports/) |
 
-**Full analysis:** [`supply-chain-attack-analysis.md`](research/04-scanner-reports/supply-chain-attack-analysis.md)
+### 2. Indirect Prompt Injection (T6 – Intent Breaking)
+
+| Phase | What was done | Key Output |
+|-------|---------------|-------------|
+| **Threat understanding** | Indirect injection via news articles (leetspeak, plain commands) | [T6 research doc](research/T6_Intent_Breaking_Indirect_Prompt_Injection.md) |
+| **Attack simulation** | Malicious `agent_state.json` with plain & obfuscated injections | [Example](screenshots/attack.png) |
+| **Mitigations** | Llama 3.1 input guard, quarantine, trust labels, prompt isolation, output validation | Code in `agent/security/` |
+| **Evaluation** | 0% false positives on real news, 100% detection of both injection variants | [Evaluation details](research/T6_Intent_Breaking_Indirect_Prompt_Injection.md#5-evaluation) |
+
+**Full analysis:**  
+- [`supply-chain-attack-analysis.md`](research/04-scanner-reports/supply-chain-attack-analysis.md)  
+- [`T6_Intent_Breaking_Indirect_Prompt_Injection.md`](research/T6_Intent_Breaking_Indirect_Prompt_Injection.md)
 
 ---
 
-## 📁 Project Structure
+## 📁 Project Structure (Updated)
 
 ```
 .
 ├── agent/                         # Core agent code
-│   ├── agent.py                   # Main agent (HMAC + scanner + keyring)
+│   ├── security/                  # Security layers (T6 mitigations)
+│   │   ├── inputs.py              # Llama 3.1 classifier + quarantine
+│   │   └── outputs.py             # Output validation
+│   ├── agent.py                   # Main agent (HMAC, scanner, keyring, T6 layers)
 │   ├── logger.py                  # Audit logging & metrics
 │   ├── sandbox_docker.py          # Docker sandbox wrapper
 │   ├── sign_skill.py              # Sign a single skill (uses keyring)
@@ -55,12 +70,14 @@ The live demo runs the **secure agent** without the attack simulation – it fet
 ├── data/                          # Persistent state (agent_state.json, etc.)
 ├── logs/                          # JSONL logs & SQLite metrics
 ├── research/                      # All threat modelling & security research
-│   ├── 01-threat-modelling/       # Diagrams, attack tree, process
+│   ├── 01-threat-modelling/       # Diagrams, attack tree
 │   ├── 02-attack-simulation/      # Key compromise script
-│   ├── 03-mitigations/            # Implementation documentation
-│   └── 04-scanner-reports/        # Scanner outputs & final analysis
+│   ├── 03-mitigations/            # Implementation docs
+│   ├── 04-scanner-reports/        # Scanner outputs
+│   └── T6_Intent_Breaking_Indirect_Prompt_Injection.md  # New T6 research
+├── screenshots/                   # Images for README and T6 doc
 ├── tests/                         # Unit/integration tests
-├── docs/                          # Architecture & demo walkthrough
+├── docs/                          # Architecture & walkthrough
 ├── .env.example                   # Environment template (no secrets)
 ├── requirements.txt
 └── Dockerfile                     # Sandbox container
@@ -75,50 +92,45 @@ The live demo runs the **secure agent** without the attack simulation – it fet
 - Python 3.10+
 - Docker Desktop (for code skills)
 - Git
-- (Windows) no extra tools – keyring uses native Credential Manager
+- Groq API key (free tier)
 
 ### Installation
 
 ```bash
-# Clone the repository
 git clone https://github.com/RuffinaMercy/agentic-threat-hunter.git
 cd agentic-threat-hunter
 
-# Create virtual environment
 python -m venv .venv
 source .venv/bin/activate       # Linux/macOS
 .venv\Scripts\activate          # Windows
 
-# Install dependencies
 pip install -r requirements.txt
 
-# Install Cisco Skill Scanner (for pre‑execution scanning)
+# Install Cisco Skill Scanner (for supply‑chain mitigation)
 pip install cisco-ai-skill-scanner
 
 # Set up environment variables
 cp .env.example .env
-# Edit .env with your GROQ_API_KEY (and optionally SKILL_SIGNING_KEY – see below)
+# Edit .env with your GROQ_API_KEY (and optionally HF_TOKEN, not required for T6)
 
 # (Optional) Build Docker sandbox
 docker build -t skill-sandbox .
 ```
 
-### 🔑 Storing the HMAC Key in Windows Credential Manager
+### 🔑 Storing the HMAC Key (Supply‑Chain Mitigation)
 
-The agent no longer reads the key from `.env`. Instead, store it once using `keyring`:
+The agent no longer reads the signing key from `.env`. Store it once using `keyring`:
 
 ```bash
 python -c "import keyring; keyring.set_password('skill_marketplace', 'SKILL_SIGNING_KEY', 'your_hex_key_here')"
 ```
 
-You can generate a random 32‑byte hex key with:
+Generate a random 32‑byte hex key with:
 ```bash
 python -c "import secrets; print(secrets.token_hex(32))"
 ```
 
-If you skip this step, the agent will raise an error – that’s intentional to force secure key storage.
-
-### Running the Secured Agent
+### Running the Secured Agent (with all T6 mitigations)
 
 ```bash
 cd agent
@@ -127,40 +139,33 @@ python agent.py
 
 The agent will:
 1. Fetch news.
-2. Load skills.
-3. **Run Cisco Skill Scanner** on each skill – any `CRITICAL` or `HIGH` finding blocks the skill.
-4. Verify HMAC signature (using key from keyring).
-5. Ask for approval (if policy requires).
-6. Execute the highest‑rated safe skill.
+2. **Apply T6 input guard** (Llama 3.1 classifies each news item as SAFE/UNSAFE).
+3. **Quarantine suspicious** articles (reported to user).
+4. Load skills, run Cisco scanner, verify HMAC signatures.
+5. Enforce policy & human approval.
+6. Execute the selected skill with **trust boundaries** (`<NEWS_DATA>` + extraction framing).
+7. Perform **output validation** (dangerous commands, unexpected URLs).
+8. Show final summary + quarantine report.
 
-### Running the Attack Simulation (Old vulnerable version)
+### Running the Attack Simulations
 
-To see the original vulnerability (key in `.env`, no scanner):
+- **Supply‑chain attack (key compromise):**  
+  ```bash
+  python agent/simulate_key_compromise.py
+  ```
 
-```bash
-# Temporarily put the key in .env (not recommended for production)
-echo "SKILL_SIGNING_KEY=your_hex_key" >> .env
-python agent/simulate_key_compromise.py   # runs the attack script
-```
-
-The simulation will steal the key, sign a malicious skill, and the agent will execute it.
+- **T6 indirect prompt injection:**  
+  Place the malicious `agent_state.json` (see [research/T6...](research/T6_Intent_Breaking_Indirect_Prompt_Injection.md)) in `data/` and run `python agent.py`.
 
 ---
 
 ## 📊 Observability Dashboard
 
-Launch the Streamlit UI from the `agent/` folder:
-
 ```bash
-streamlit run ui.py
+streamlit run agent/ui.py
 ```
 
-Tabs include:
-- **Run Agent** – execute and watch logs.
-- **Latest Summary** – cached summary.
-- **Raw News** – fetched headlines.
-- **Skill Marketplace** – browse skills, ratings, signatures.
-- **Observability** – audit logs, metrics, trends, policy editor.
+Tabs include: Run Agent, Latest Summary, Raw News, Skills, Observability, Policy Editor.
 
 ---
 
@@ -170,58 +175,62 @@ Tabs include:
 pytest test_agent.py -v
 ```
 
-Tests cover signature verification, policy enforcement, and approval gates.
-
 ---
 
-## 🛡️ Security Layers (Defence in Depth)
+## 🛡️ Defence in Depth – Combined Layers
 
-| Layer | Technology | What It Stops |
-|-------|------------|----------------|
-| **1. Pre‑execution scanning** | Cisco Skill Scanner (YARA rules) | Prompt injection, command injection, malicious patterns |
-| **2. Integrity** | HMAC‑SHA256 signing | Tampered or unapproved skills |
-| **3. Secrets management** | Keyring (Windows Credential Manager) | Key theft from `.env` or Git history |
-| **4. Policy & approval** | YAML policies + human gate | Unauthorised skill execution |
-| **5. Runtime isolation** | Docker sandbox (read‑only FS, no network) | Arbitrary code execution |
-| **6. Observability** | JSONL logs + SQLite metrics | Audit trail, anomaly detection |
+| Layer | Technology | Threat Addressed |
+|-------|------------|------------------|
+| **1. Input guard** | Llama 3.1 classifier (Groq) | Indirect prompt injection (T6) |
+| **2. Quarantine & provenance** | Trust labels, persistent state | Suspicious content isolation |
+| **3. Prompt isolation** | `<NEWS_DATA>` delimiters + extraction framing | Goal manipulation |
+| **4. Output validation** | Dangerous commands + URL checks | Residual manipulation |
+| **5. Pre‑execution scanning** | Cisco Skill Scanner | Malicious skills (supply chain) |
+| **6. Integrity** | HMAC‑SHA256 signing | Tampered skills |
+| **7. Secrets management** | Keyring (Windows Credential Manager) | Key theft |
+| **8. Policy & approval** | YAML policies + human gate | Unauthorised execution |
+| **9. Runtime isolation** | Docker sandbox | Arbitrary code execution |
+| **10. Observability** | JSONL logs + SQLite metrics | Audit & anomaly detection |
 
 ---
 
 ## 🔗 Framework Mapping
 
-| Threat | OWASP LLM 2025 | MITRE ATLAS | Mitigation |
-|--------|----------------|-------------|-------------|
-| Malicious skill with fake rating | LLM03: Supply Chain | T1199 | Cisco scanner |
-| HMAC key in plaintext | LLM06: Sensitive Info Disclosure | T1552 | Keyring |
-| User approval fatigue | LLM07: Insecure Plugin Design | T1204 | Human gate (future: throttling) |
-| Indirect prompt injection (RSS) | LLM01: Prompt Injection | AML.T0059 | Not yet mitigated (future work) |
+| Threat | OWASP | MITRE ATLAS | Mitigation |
+|--------|-------|-------------|-------------|
+| Malicious skill with fake rating | LLM03 | T1199 | Cisco scanner |
+| HMAC key in plaintext | LLM06 | T1552 | Keyring |
+| Indirect prompt injection (T6) | LLM01 | AML.T0059 | Llama 3.1 input guard + quarantine + prompt isolation |
+| Output manipulation | LLM01 | AML.T0059 | Output validation |
 
 ---
 
-## 📚 Documentation
+## 📚 Key Documentation
 
-- [Full research analysis](research/04-scanner-reports/supply-chain-attack-analysis.md)
-- [Threat modelling process (MAESTRO)](research/01-threat-modelling/threat-modelling-process.md)
+- [Supply‑chain attack analysis](research/04-scanner-reports/supply-chain-attack-analysis.md)
+- [T6 – Indirect prompt injection (Intent Breaking)](research/T6_Intent_Breaking_Indirect_Prompt_Injection.md)
+- [Threat modelling (MAESTRO)](research/01-threat-modelling/threat-modelling-process.md)
 - [Keyring implementation](research/03-mitigations/keyring-implementation.md)
 - [Cisco scanner integration](research/03-mitigations/cisco-scanner-integration.md)
-- [Original architecture overview](docs/architecture.md)
-- [Demo walkthrough](docs/demo.md)
 
 ---
 
 ## ⚠️ Limitations & Future Work
 
-- **Keyring only on Windows** – the code works cross‑platform but was tested on Windows; Linux/macOS would use `keyring` backends.
-- **Scanner static only** – behavioural scanning (`--use-behavioral`) requires an LLM API key (planned).
-- **No key rotation** – keys are static; rotation would improve security.
-- **Indirect prompt injection** – RSS feeds are not sanitised (future enhancement).
-- **Approval fatigue** – no throttling or hash display (future UI improvement).
+- **T6 input guard** uses Groq’s cloud API – requires internet; offline version possible with local models (future work).  
+- **Keyring** works on Windows out‑of‑the‑box; Linux/macOS may need additional backends.  
+- **Scanner behavioural analysis** requires LLM API key (optional).  
+- **No key rotation** – static HMAC keys could be rotated periodically.  
+- **User approval fatigue** – future UI could rate‑limit or hash display.
 
 ---
 
 ## 🤝 Acknowledgements
 
-- [Cisco AI Defense](https://github.com/cisco-ai-defense/skill-scanner) for the skill scanner
-- [AI Red Teaming Guide](https://github.com/requie/AI-Red-Teaming-Guide) for attack trees
-  
+- [Cisco AI Defense](https://github.com/cisco-ai-defense/skill-scanner)
+- [OWASP Agentic AI Initiative](https://owasp.org/www-project-agentic-ai/)
+- [Groq](https://groq.com) for free LLM inference
+- [AI Red Teaming Guide](https://github.com/requie/AI-Red-Teaming-Guide)
+
 ---
+

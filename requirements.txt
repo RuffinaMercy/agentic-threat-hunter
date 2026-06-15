@@ -10,3 +10,5 @@ pandas
 plotly
 streamlit-aggrid
 pytest
+aco-prompt-shield
+pytector

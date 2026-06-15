@@ -165,9 +165,3 @@ The classification and quarantine logs confirm the injections were caught before
    - `agent/agent.py` (lines for input guard, quarantine, and prompt isolation)
 
 ---
-
-**Document version:** 2.0 (aligned with current screenshots)  
-**Last updated:** June 2026
-```
-
-This version now directly references your actual screenshots and test state file. It omits the failed approaches section, keeping the document focused on T6. You can replace the existing file with this content and then commit/push.

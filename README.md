@@ -1,5 +1,5 @@
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/)
-[![Live Demo](https://img.shields.io/badge/Live_Demo-Streamlit-FF4B4B?style=for-the-badge&logo=Streamlit&logoColor=white)](https://ruffina-ai-news-agent.streamlit.app/)
+[![Live Demo](https://img.shields.io/badge/Live_Demo-Streamlit-FF4B4B?style=for-the-badge&logo=Streamlit&logoColor=white)](https://daily-ai-news-summarizer.streamlit.app/)
 [![Security Research](https://img.shields.io/badge/Security-Research-red)](research/04-scanner-reports/supply-chain-attack-analysis.md)
 
 # Agentic AI – Security Research Edition
@@ -17,7 +17,8 @@ We simulate real attacks, then implement **defence in depth** using industry‑g
 
 ## 🎯 Live Demo (Original Agent)
 
-[![Live Demo](https://img.shields.io/badge/Live_Demo-Streamlit-FF4B4B?style=for-the-badge&logo=Streamlit&logoColor=white)](https://ruffina-ai-news-agent.streamlit.app/)
+[![Live Demo](https://img.shields.io/badge/Live_Demo-Streamlit-FF4B4B?style=for-the-badge&logo=Streamlit&logoColor=white)](https://daily-ai-news-summarizer.streamlit.app/)
+
 
 The live demo runs the **secure agent** – it fetches daily AI news, selects the highest‑rated skill, and produces a summary.  
 *To see the full security research (attack simulations, T6 mitigations, scanner reports), clone the repository.*
